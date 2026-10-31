@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Agenda Make</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Agenda Make">
+<meta name="theme-color" content="#b76e79">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#fbf4f2; --card:#ffffff; --ink:#3a2a2d; --muted:#8a7377; --rose:#b76e79; --rose-d:#7a3e48;
+  --rose-l:#f3dfe1; --line:#ecdcdc; --ok:#4f8a6b; --ok-l:#e2f1e8; --warn:#c0763a; --bad:#b84545;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;font-size:16px}
+body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{padding:14px 16px 6px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.3px}
+header h1 span{color:var(--rose)}
+.icon-btn{border:0;background:var(--rose-l);color:var(--rose-d);width:38px;height:38px;border-radius:12px;font-size:18px}
+main{flex:1;overflow-y:auto;padding:0 16px 110px}
+.view{display:none}.view.on{display:block}
+
+/* Avisos de hoje/amanhã */
+.aviso{background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border-radius:18px;padding:14px 16px;margin:8px 0 14px}
+.aviso b{display:block;font-size:13px;opacity:.85;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.aviso div{font-size:15px;line-height:1.45}
+
+/* Calendário */
+.cal{background:var(--card);border-radius:20px;padding:12px;box-shadow:0 1px 3px rgba(122,62,72,.08)}
+.cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-top strong{font-size:17px;text-transform:capitalize}
+.cal-top button{border:0;background:none;font-size:22px;color:var(--rose);width:40px;height:36px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.grid .wd{font-size:12px;color:var(--muted);padding:4px 0;font-weight:600}
+.day{aspect-ratio:1;border:0;background:none;border-radius:12px;font-size:15px;color:var(--ink);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.day.out{color:#cdbfc1}
+.day.hoje{font-weight:800;color:var(--rose-d);background:var(--rose-l)}
+.day.sel{background:var(--rose);color:#fff}
+.day .dots{display:flex;gap:2px;margin-top:2px;height:5px}
+.day .dots i{width:5px;height:5px;border-radius:50%;background:var(--rose)}
+.day.sel .dots i{background:#fff}
+.day.cheio::after{content:"";position:absolute;inset:3px;border:2px solid var(--bad);border-radius:10px;opacity:.5}
+.legenda{font-size:12px;color:var(--muted);margin:8px 2px 0;display:flex;gap:14px}
+.legenda i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--rose);margin-right:4px}
+
+/* Lista do dia */
+.dia-titulo{display:flex;align-items:baseline;justify-content:space-between;margin:18px 2px 8px}
+.dia-titulo h2{font-size:18px;margin:0}
+.dia-titulo h2::first-letter{text-transform:uppercase}
+.status{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px}
+.status.livre{background:var(--ok-l);color:var(--ok)}
+.status.parcial{background:#fbecd9;color:var(--warn)}
+.status.cheio{background:#f6dcdc;color:var(--bad)}
+.item{background:var(--card);border-radius:16px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;box-shadow:0 1px 3px rgba(122,62,72,.06)}
+.item .hora{min-width:54px;font-weight:700;color:var(--rose-d);font-size:16px}
+.item .hora small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.item .info{flex:1;min-width:0}
+.item .nome{font-weight:650;font-size:16px}
+.item .det{font-size:13.5px;color:var(--muted);margin-top:2px;line-height:1.4;word-wrap:break-word}
+.item .acoes{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip{border:0;background:var(--rose-l);color:var(--rose-d);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:600}
+.chip.cinza{background:#f1eaea;color:var(--muted)}
+.livres{background:var(--ok-l);color:var(--ok);border-radius:14px;padding:10px 14px;font-size:14px;margin-bottom:10px}
+.vazio{text-align:center;color:var(--muted);padding:18px 8px;font-size:14px}
+
+/* Chat */
+#chat{display:flex;flex-direction:column;gap:8px;padding-top:6px;padding-bottom:70px}
+.msg{max-width:86%;padding:10px 13px;border-radius:18px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.msg.bot{background:var(--card);align-self:flex-start;border-bottom-left-radius:6px;box-shadow:0 1px 2px rgba(122,62,72,.07)}
+.msg.eu{background:var(--rose);color:#fff;align-self:flex-end;border-bottom-right-radius:6px}
+.sugs{display:flex;gap:6px;flex-wrap:wrap;align-self:flex-start;max-width:100%}
+.sugs .chip{background:#fff;border:1.5px solid var(--rose-l)}
+.chat-bar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:8px 12px;background:var(--bg);display:none;gap:8px}
+.chat-bar.on{display:flex}
+.chat-bar input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:11px 16px;font-size:16px;background:#fff;color:var(--ink);outline:none}
+.chat-bar input:focus{border-color:var(--rose)}
+.chat-bar button{border:0;background:var(--rose);color:#fff;width:46px;border-radius:50%;font-size:18px}
+
+/* Barra inferior */
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;border:0;background:none;padding:8px 0 10px;color:var(--muted);font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .ic{font-size:21px;line-height:26px}
+nav button.on{color:var(--rose-d)}
+nav .mais .ic{background:var(--rose);color:#fff;width:46px;height:46px;border-radius:50%;line-height:46px;font-size:26px;margin-top:-18px;box-shadow:0 4px 12px rgba(183,110,121,.4)}
+
+/* Formulário (folha que sobe) */
+.fundo{position:fixed;inset:0;background:rgba(58,42,45,.35);display:none;z-index:10}
+.fundo.on{display:block}
+.folha{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:22px 22px 0 0;max-height:92vh;overflow-y:auto;
+  padding:10px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s;z-index:11}
+.folha.on{transform:none}
+.folha .puxa{width:40px;height:5px;background:var(--line);border-radius:3px;margin:0 auto 10px}
+.folha h3{margin:0 0 12px;font-size:19px}
+label{display:block;font-size:13px;color:var(--muted);font-weight:600;margin:10px 2px 4px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font-size:16px;background:#fff;color:var(--ink);font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--rose)}
+.lado{display:flex;gap:10px}.lado>div{flex:1}
+.alerta{font-size:13.5px;padding:9px 12px;border-radius:12px;margin-top:10px;display:none}
+.alerta.on{display:block}
+.alerta.ruim{background:#f6dcdc;color:var(--bad)}
+.alerta.bom{background:var(--ok-l);color:var(--ok)}
+.btn{width:100%;border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:700;margin-top:14px}
+.btn.pri{background:var(--rose);color:#fff}
+.btn.sec{background:var(--rose-l);color:var(--rose-d)}
+.btn.perigo{background:none;color:var(--bad)}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-80px);background:var(--ink);color:#fff;
+  padding:10px 16px;border-radius:999px;font-size:14px;transition:transform .25s;z-index:20;max-width:90%;text-align:center}
+.toast.on{transform:translate(-50%,0)}
+.cfg-bloco{background:var(--card);border-radius:16px;padding:6px 14px 14px;margin-bottom:12px}
+.dica{font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Agenda <span>Make</span> 💄</h1>
+  <button class="icon-btn" onclick="abrirConfig()" aria-label="Configurações">⚙️</button>
+</header>
+
+<main>
+  <!-- AGENDA -->
+  <section id="v-agenda" class="view on">
+    <div id="avisos"></div>
+    <div class="cal">
+      <div class="cal-top">
+        <button onclick="mudarMes(-1)" aria-label="Mês anterior">‹</button>
+        <strong id="mesTitulo"></strong>
+        <button onclick="mudarMes(1)" aria-label="Próximo mês">›</button>
+      </div>
+      <div class="grid" id="grade"></div>
+      <div class="legenda"><span><i></i>atendimento</span><span>borda vermelha = dia cheio</span></div>
+    </div>
+    <div class="dia-titulo"><h2 id="diaTitulo"></h2><span id="diaStatus" class="status"></span></div>
+    <div id="listaDia"></div>
+  </section>
+
+  <!-- ASSISTENTE -->
+  <section id="v-chat" class="view">
+    <div id="chat"></div>
+  </section>
+</main>
+
+<div class="chat-bar" id="chatBar">
+  <input id="chatIn" placeholder="Ex.: tenho horário dia 12/12?" autocomplete="off" enterkeyhint="send">
+  <button onclick="enviar()" aria-label="Enviar">➤</button>
+</div>
+
+<nav>
+  <button id="n-agenda" class="on" onclick="trocar('agenda')"><span class="ic">📅</span>Agenda</button>
+  <button class="mais" onclick="abrirForm()"><span class="ic">+</span>Agendar</button>
+  <button id="n-chat" onclick="trocar('chat')"><span class="ic">💬</span>Assistente</button>
+</nav>
+
+<!-- Folha: novo/editar atendimento -->
+<div class="fundo" id="fundo" onclick="fecharFolhas()"></div>
+<div class="folha" id="folhaForm">
+  <div class="puxa"></div>
+  <h3 id="formTitulo">Novo atendimento</h3>
+  <input type="hidden" id="fId">
+  <label>Cliente *</label><input id="fNome" placeholder="Nome da cliente" autocomplete="off">
+  <div class="lado">
+    <div><label>Data *</label><input id="fData" type="date"></div>
+    <div><label>Horário *</label><input id="fHora" type="time" step="900"></div>
+  </div>
+  <div class="lado">
+    <div><label>Duração</label>
+      <select id="fDur">
+        <option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hora</option>
+        <option value="90">1h30</option><option value="120">2 horas</option><option value="150">2h30</option>
+        <option value="180">3 horas</option><option value="240">4 horas</option>
+      </select></div>
+    <div><label>Valor (R$)</label><input id="fValor" inputmode="decimal" placeholder="0,00"></div>
+  </div>
+  <label>Local do atendimento *</label><input id="fLocal" placeholder="Ex.: Studio, casa da noiva, Rua X, 123">
+  <label>Serviço</label>
+  <input id="fServ" list="servicos" placeholder="Ex.: Maquiagem social">
+  <datalist id="servicos">
+    <option value="Maquiagem social"><option value="Maquiagem de noiva"><option value="Maquiagem de madrinha">
+    <option value="Maquiagem de formatura"><option value="Maquiagem + penteado"><option value="Maquiagem de debutante">
+  </datalist>
+  <label>WhatsApp da cliente</label><input id="fTel" type="tel" inputmode="tel" placeholder="(67) 99999-9999">
+  <label>Observações</label><textarea id="fObs" rows="2" placeholder="Ex.: pele oleosa, levar cílios"></textarea>
+  <div class="alerta" id="fAlerta"></div>
+  <button class="btn pri" onclick="salvarForm()">Salvar atendimento</button>
+  <button class="btn perigo" id="fExcluir" onclick="excluirForm()" style="display:none">Excluir atendimento</button>
+</div>
+
+<!-- Folha: configurações -->
+<div class="folha" id="folhaCfg">
+  <div class="puxa"></div>
+  <h3>Configurações</h3>
+  <div class="cfg-bloco">
+    <label>Começo o expediente às</label><input id="cIni" type="time">
+    <label>Termino o expediente às</label><input id="cFim" type="time">
+    <label>Duração padrão de um atendimento</label>
+    <select id="cDur">
+      <option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hora</option>
+      <option value="90">1h30</option><option value="120">2 horas</option><option value="180">3 horas</option>
+    </select>
+    <label>Lembrete no dia do atendimento</label>
+    <select id="cAviso">
+      <option value="60">1 hora antes</option><option value="120">2 horas antes</option>
+      <option value="180">3 horas antes</option><option value="manha">Às 7h da manhã do dia</option>
+    </select>
+    <p class="dica">O lembrete de <b>1 dia antes</b> sempre vai junto.</p>
+    <button class="btn pri" onclick="salvarCfg()">Salvar</button>
+  </div>
+  <div class="cfg-bloco">
+    <label>Cópia de segurança</label>
+    <p class="dica">Os agendamentos ficam guardados só neste iPhone. Faça uma cópia de vez em quando (ex.: salvar no Arquivos/iCloud ou mandar no WhatsApp pra você mesma).</p>
+    <button class="btn sec" onclick="exportar()">📤 Fazer cópia de segurança</button>
+    <button class="btn sec" onclick="document.getElementById('arqImp').click()">📥 Restaurar uma cópia</button>
+    <input type="file" id="arqImp" accept=".json,application/json" style="display:none" onchange="importar(this)">
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================== DADOS ================== */
+const CHAVE = 'agendaMake.v1';
+let BD = carregar();
+function carregar(){
+  try{ const d = JSON.parse(localStorage.getItem(CHAVE)); if(d && d.ag) return d; }catch(e){}
+  return { ag: [], cfg: { ini:'07:00', fim:'20:00', dur:90, aviso:'120' } };
+}
+function gravar(){ try{ localStorage.setItem(CHAVE, JSON.stringify(BD)); }catch(e){ toast('Não consegui salvar 😕'); } }
+
+/* ================== UTILITÁRIOS DE DATA ================== */
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const SEMANA = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const deIso = s => { const [a,m,d] = s.split('-').map(Number); return new Date(a, m-1, d); };
+const min = h => { const [a,b] = h.split(':').map(Number); return a*60+b; };
+const hhmm = m => `${pad(Math.floor(m/60))}:${pad(m%60)}`;
+const hoje = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const br = s => { const d = deIso(s); return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; };
+const brLongo = s => { const d = deIso(s); return `${SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const fmtHoraBr = h => { const [a,b] = h.split(':'); return b === '00' ? `${Number(a)}h` : `${Number(a)}h${b}`; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDur = m => m < 60 ? `${m} min` : (m % 60 ? `${Math.floor(m/60)}h${pad(m%60)}` : `${m/60}h`);
+
+/* ================== REGRAS DA AGENDA ================== */
+function doDia(data){ return BD.ag.filter(a => a.data === data).sort((a,b) => min(a.hora) - min(b.hora)); }
+
+// Intervalos livres do dia (em minutos)
+function livres(data, ignorarId){
+  const ini = min(BD.cfg.ini), fim = min(BD.cfg.fim);
+  let blocos = doDia(data).filter(a => a.id !== ignorarId).map(a => [min(a.hora), min(a.hora) + Number(a.dur)]);
+  let lista = [], cursor = ini;
+  // se for hoje, não oferece horário que já passou
+  if (data === iso(hoje())){ const n = new Date(); const agora = n.getHours()*60 + n.getMinutes(); cursor = Math.max(cursor, Math.ceil(agora/15)*15); }
+  for (const [a,b] of blocos){ if (a > cursor) lista.push([cursor, Math.min(a, fim)]); cursor = Math.max(cursor, b); }
+  if (cursor < fim) lista.push([cursor, fim]);
+  return lista.filter(([a,b]) => b - a >= 30);
+}
+function cabe(data, hora, dur, ignorarId){
+  const a = min(hora), b = a + Number(dur);
+  return !doDia(data).some(x => x.id !== ignorarId && a < min(x.hora) + Number(x.dur) && min(x.hora) < b);
+}
+function conflito(data, hora, dur, ignorarId){
+  const a = min(hora), b = a + Number(dur);
+  return doDia(data).find(x => x.id !== ignorarId && a < min(x.hora) + Number(x.dur) && min(x.hora) < b);
+}
+function situacao(data){
+  const lv = livres(data), dur = Number(BD.cfg.dur);
+  const qtd = doDia(data).length;
+  const cabeUm = lv.some(([a,b]) => b - a >= dur);
+  if (!qtd) return { cls:'livre', txt:'Dia livre' };
+  if (!cabeUm) return { cls:'cheio', txt:'Dia cheio' };
+  return { cls:'parcial', txt:`${qtd} atendimento${qtd>1?'s':''}` };
+}
+const txtLivres = data => livres(data).map(([a,b]) => `${fmtHoraBr(hhmm(a))} às ${fmtHoraBr(hhmm(b))}`).join(' · ');
+
+/* ================== TELA: CALENDÁRIO ================== */
+let mesVisto = hoje(); mesVisto.setDate(1);
+let diaSel = iso(hoje());
+
+function mudarMes(n){ mesVisto.setMonth(mesVisto.getMonth() + n); desenharCal(); }
+function selecionar(data){
+  diaSel = data; const d = deIso(data);
+  if (d.getMonth() !== mesVisto.getMonth() || d.getFullYear() !== mesVisto.getFullYear()){ mesVisto = new Date(d.getFullYear(), d.getMonth(), 1); }
+  desenharCal(); desenharDia();
+}
+function desenharCal(){
+  document.getElementById('mesTitulo').textContent = `${MESES[mesVisto.getMonth()]} ${mesVisto.getFullYear()}`;
+  const g = document.getElementById('grade');
+  let h = ['D','S','T','Q','Q','S','S'].map(x => `<div class="wd">${x}</div>`).join('');
+  const inicio = new Date(mesVisto); inicio.setDate(1 - inicio.getDay());
+  const hj = iso(hoje());
+  for (let i = 0; i < 42; i++){
+    const d = new Date(inicio); d.setDate(inicio.getDate() + i);
+    const s = iso(d), qtd = doDia(s).length;
+    if (i >= 35 && d.getMonth() !== mesVisto.getMonth()) break;
+    const cls = ['day', d.getMonth() !== mesVisto.getMonth() ? 'out':'', s === hj ? 'hoje':'', s === diaSel ? 'sel':'',
+      qtd && situacao(s).cls === 'cheio' ? 'cheio':''].join(' ');
+    h += `<button class="${cls}" onclick="selecionar('${s}')">${d.getDate()}<span class="dots">${'<i></i>'.repeat(Math.min(qtd,3))}</span></button>`;
+  }
+  g.innerHTML = h;
+}
+function cartao(a){
+  const fim = hhmm(min(a.hora) + Number(a.dur));
+  const zap = a.tel ? a.tel.replace(/\D/g,'') : '';
+  return `<div class="item">
+    <div class="hora">${a.hora}<small>até ${fim}</small></div>
+    <div class="info">
+      <div class="nome">${esc(a.nome)}</div>
+      <div class="det">📍 ${esc(a.local)}${a.serv ? `<br>💄 ${esc(a.serv)}`:''}${a.valor ? ` · R$ ${esc(a.valor)}`:''}${a.obs ? `<br>📝 ${esc(a.obs)}`:''}</div>
+      <div class="acoes">
+        <button class="chip" onclick="addCalendario('${a.id}')">🔔 Lembretes</button>
+        ${zap ? `<a class="chip" style="text-decoration:none" href="https://wa.me/55${zap.replace(/^55/,'')}">WhatsApp</a>`:''}
+        <button class="chip cinza" onclick="abrirForm('${a.id}')">Editar</button>
+      </div>
+    </div></div>`;
+}
+function desenharDia(){
+  document.getElementById('diaTitulo').textContent = brLongo(diaSel);
+  const st = situacao(diaSel), el = document.getElementById('diaStatus');
+  el.className = 'status ' + st.cls; el.textContent = st.txt;
+  const lista = doDia(diaSel);
+  let h = '';
+  const lv = txtLivres(diaSel);
+  if (deIso(diaSel) >= hoje()) h += lv ? `<div class="livres">✅ <b>Livre:</b> ${lv}</div>` : '';
+  h += lista.length ? lista.map(cartao).join('') : `<div class="vazio">Nenhum atendimento neste dia.<br><br><button class="chip" onclick="abrirForm(null,'${diaSel}')">+ Agendar neste dia</button></div>`;
+  document.getElementById('listaDia').innerHTML = h;
+}
+function desenharAvisos(){
+  const hj = iso(hoje()); const am = new Date(hoje()); am.setDate(am.getDate()+1); const amS = iso(am);
+  const linha = a => `<b style="display:inline;font-size:15px;opacity:1;text-transform:none;letter-spacing:0">${a.hora}</b> ${esc(a.nome)} — ${esc(a.local)}`;
+  let h = '';
+  const th = doDia(hj).filter(a => min(a.hora) + Number(a.dur) > new Date().getHours()*60 + new Date().getMinutes());
+  if (th.length) h += `<div class="aviso"><b>Hoje</b><div>${th.map(linha).join('<br>')}</div></div>`;
+  const ta = doDia(amS);
+  if (ta.length) h += `<div class="aviso" style="background:linear-gradient(135deg,#c98a93,#9b5a65)"><b>Amanhã</b><div>${ta.map(linha).join('<br>')}</div></div>`;
+  document.getElementById('avisos').innerHTML = h;
+}
+function atualizarTudo(){ desenharCal(); desenharDia(); desenharAvisos(); }
+
+/* ================== FORMULÁRIO ================== */
+const $ = id => document.getElementById(id);
+function abrirForm(id, data, hora){
+  const a = id ? BD.ag.find(x => x.id === id) : null;
+  $('formTitulo').textContent = a ? 'Editar atendimento' : 'Novo atendimento';
+  $('fId').value = a ? a.id : '';
+  $('fNome').value = a?.nome || ''; $('fData').value = a?.data || data || diaSel;
+  $('fHora').value = a?.hora || hora || ''; $('fDur').value = String(a?.dur || BD.cfg.dur);
+  $('fValor').value = a?.valor || ''; $('fLocal').value = a?.local || ''; $('fServ').value = a?.serv || '';
+  $('fTel').value = a?.tel || ''; $('fObs').value = a?.obs || '';
+  $('fExcluir').style.display = a ? 'block' : 'none';
+  checarForm();
+  $('fundo').classList.add('on'); $('folhaForm').classList.add('on');
+}
+function fecharFolhas(){ $('fundo').classList.remove('on'); $('folhaForm').classList.remove('on'); $('folhaCfg').classList.remove('on'); }
+function checarForm(){
+  const al = $('fAlerta'), d = $('fData').value, h = $('fHora').value, dur = $('fDur').value, id = $('fId').value;
+  al.className = 'alerta';
+  if (!d) return;
+  if (!h){ const lv = txtLivres(d); al.className = 'alerta on bom'; al.textContent = lv ? `Livre nesse dia: ${lv}` : 'Esse dia já está todo ocupado.'; return; }
+  const c = conflito(d, h, dur, id);
+  if (c){ al.className = 'alerta on ruim'; al.textContent = `⚠️ Bate com ${c.nome} às ${c.hora}. Livre: ${txtLivres(d) || 'nada'}`; }
+  else if (min(h) < min(BD.cfg.ini) || min(h) + Number(dur) > min(BD.cfg.fim)){ al.className = 'alerta on ruim'; al.textContent = `Fora do seu expediente (${BD.cfg.ini} às ${BD.cfg.fim}). Pode salvar mesmo assim.`; }
+  else { al.className = 'alerta on bom'; al.textContent = '✅ Horário disponível'; }
+}
+['fData','fHora','fDur'].forEach(i => document.getElementById(i).addEventListener('change', checarForm));
+function salvarForm(){
+  const a = { id: $('fId').value || ('a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
+    nome: $('fNome').value.trim(), data: $('fData').value, hora: $('fHora').value, dur: Number($('fDur').value),
+    valor: $('fValor').value.trim(), local: $('fLocal').value.trim(), serv: $('fServ').value.trim(),
+    tel: $('fTel').value.trim(), obs: $('fObs').value.trim() };
+  if (!a.nome || !a.data || !a.hora || !a.local){ toast('Preencha cliente, data, horário e local'); return; }
+  const c = conflito(a.data, a.hora, a.dur, $('fId').value);
+  if (c && !confirm(`Esse horário bate com ${c.nome} (${c.hora}). Salvar mesmo assim?`)) return;
+  const novo = !$('fId').value;
+  BD.ag = BD.ag.filter(x => x.id !== a.id); BD.ag.push(a); gravar();
+  fecharFolhas(); selecionar(a.data); desenharAvisos();
+  toast(novo ? 'Agendado! ✨' : 'Atualizado!');
+  if (novo) setTimeout(() => { if (confirm('Quer colocar os lembretes no iPhone (1 dia antes e no dia)?')) addCalendario(a.id); }, 350);
+}
+function excluirForm(){
+  const id = $('fId').value, a = BD.ag.find(x => x.id === id);
+  if (!a || !confirm(`Excluir o atendimento de ${a.nome}?`)) return;
+  BD.ag = BD.ag.filter(x => x.id !== id); gravar(); fecharFolhas(); atualizarTudo(); toast('Excluído');
+}
+
+/* ================== LEMBRETES (Calendário do iPhone) ================== */
+function gerarICS(a){
+  const d = a.data.replace(/-/g,''), ini = a.hora.replace(':','') + '00';
+  const f = hhmm(min(a.hora) + Number(a.dur)).replace(':','') + '00';
+  const limpa = s => String(s || '').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+  const desc = [a.serv && `Serviço: ${a.serv}`, a.tel && `WhatsApp: ${a.tel}`, a.valor && `Valor: R$ ${a.valor}`, a.obs && `Obs: ${a.obs}`].filter(Boolean).join('\n');
+  let gatilhoDia;
+  if (BD.cfg.aviso === 'manha'){ gatilhoDia = `-PT${Math.max(0, min(a.hora) - 7*60)}M`; } else gatilhoDia = `-PT${BD.cfg.aviso}M`;
+  const agora = new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//AgendaMake//PT-BR','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'BEGIN:VEVENT', `UID:${a.id}@agendamake`, `DTSTAMP:${agora}`,
+    `DTSTART:${d}T${ini}`, `DTEND:${d}T${f}`,
+    `SUMMARY:${limpa('💄 ' + a.nome + (a.serv ? ' – ' + a.serv : ''))}`,
+    `LOCATION:${limpa(a.local)}`, `DESCRIPTION:${limpa(desc)}`,
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${limpa('Amanhã ' + a.hora + ': ' + a.nome + ' em ' + a.local)}`,'TRIGGER:-P1D','END:VALARM',
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${limpa('Hoje ' + a.hora + ': ' + a.nome + ' em ' + a.local)}`,`TRIGGER:${gatilhoDia}`,'END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].join('\r\n');
+}
+async function addCalendario(id){
+  const a = BD.ag.find(x => x.id === id); if (!a) return;
+  const nomeArq = `atendimento-${a.nome.normalize('NFD').replace(/[^\w]+/g,'-').toLowerCase()}-${a.data}.ics`;
+  const blob = new Blob([gerarICS(a)], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  // iPhone: abrir o arquivo .ics mostra a tela "Adicionar ao Calendário"
+  const lk = document.createElement('a'); lk.href = url; lk.target = '_blank'; lk.rel = 'noopener';
+  if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) lk.download = nomeArq;
+  document.body.appendChild(lk); lk.click(); lk.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('Toque em "Adicionar" para salvar os lembretes 🔔');
+}
+
+/* ================== CONFIGURAÇÕES / BACKUP ================== */
+function abrirConfig(){
+  $('cIni').value = BD.cfg.ini; $('cFim').value = BD.cfg.fim; $('cDur').value = String(BD.cfg.dur); $('cAviso').value = String(BD.cfg.aviso);
+  $('fundo').classList.add('on'); $('folhaCfg').classList.add('on');
+}
+function salvarCfg(){
+  if (min($('cIni').value) >= min($('cFim').value)){ toast('O fim precisa ser depois do começo'); return; }
+  BD.cfg = { ini:$('cIni').value, fim:$('cFim').value, dur:Number($('cDur').value), aviso:$('cAviso').value };
+  gravar(); fecharFolhas(); atualizarTudo(); toast('Configurações salvas');
+}
+async function exportar(){
+  const nome = `agenda-make-backup-${iso(new Date())}.json`;
+  const arq = new File([JSON.stringify(BD, null, 1)], nome, { type:'application/json' });
+  if (navigator.canShare && navigator.canShare({ files:[arq] })){ try{ await navigator.share({ files:[arq], title:'Backup Agenda Make' }); return; }catch(e){ if (e.name === 'AbortError') return; } }
+  const lk = document.createElement('a'); lk.href = URL.createObjectURL(arq); lk.download = nome; lk.click();
+}
+function importar(inp){
+  const f = inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{ const d = JSON.parse(r.result); if (!Array.isArray(d.ag)) throw 0;
+      if (!confirm(`Restaurar ${d.ag.length} atendimentos? Os atuais serão substituídos.`)) return;
+      BD = { ag:d.ag, cfg: Object.assign({}, BD.cfg, d.cfg) }; gravar(); fecharFolhas(); atualizarTudo(); toast('Cópia restaurada!');
+    }catch(e){ toast('Arquivo inválido'); }
+    inp.value = '';
+  };
+  r.readAsText(f);
+}
+
+/* ================== NAVEGAÇÃO ================== */
+function trocar(v){
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('on'));
+  $('v-' + v).classList.add('on');
+  $('n-agenda').classList.toggle('on', v === 'agenda'); $('n-chat').classList.toggle('on', v === 'chat');
+  $('chatBar').classList.toggle('on', v === 'chat');
+  if (v === 'chat'){ if (!$('chat').children.length) boasVindas(); rolarChat(); }
+  else atualizarTudo();
+}
+let tt; function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2600); }
+
+/* ================== ASSISTENTE (robozinho) ================== */
+const semAcento = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const DIAS_SEM = { domingo:0, segunda:1, terca:2, quarta:3, quinta:4, sexta:5, sabado:6 };
+const MES_IDX = { janeiro:1, fevereiro:2, marco:3, abril:4, maio:5, junho:6, julho:7, agosto:8, setembro:9, outubro:10, novembro:11, dezembro:12,
+                  jan:1, fev:2, mar:3, abr:4, mai:5, jun:6, jul:7, ago:8, set:9, out:10, nov:11, dez:12 };
+
+// Encontra a data na frase. Devolve { data:'AAAA-MM-DD', resto: frase sem a data }
+function acharData(t){
+  const hj = hoje(); let m;
+  const valida = (a, me, d) => { const x = new Date(a, me-1, d); return x.getMonth() === me-1 && x.getDate() === d ? x : null; };
+  const futuro = (me, d) => { let x = valida(hj.getFullYear(), me, d); if (x && x < hj) x = valida(hj.getFullYear()+1, me, d); return x; };
+  if ((m = t.match(/\b(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?\b/))){
+    const d = +m[1], me = +m[2]; let a = m[3] ? +m[3] : null; if (a && a < 100) a += 2000;
+    const x = a ? valida(a, me, d) : futuro(me, d); if (x) return { data: iso(x), resto: t.replace(m[0], ' ') };
+  }
+  if ((m = t.match(/\b(?:dia\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?/))){
+    const me = MES_IDX[m[2]]; if (me){ const x = m[3] ? valida(+m[3], me, +m[1]) : futuro(me, +m[1]); if (x) return { data: iso(x), resto: t.replace(m[0], ' ') }; }
+  }
+  if (/depois de amanha/.test(t)){ const x = new Date(hj); x.setDate(x.getDate()+2); return { data: iso(x), resto: t.replace('depois de amanha',' ') }; }
+  if (/\bamanha\b/.test(t)){ const x = new Date(hj); x.setDate(x.getDate()+1); return { data: iso(x), resto: t.replace('amanha',' ') }; }
+  if (/\bhoje\b/.test(t)) return { data: iso(hj), resto: t.replace('hoje',' ') };
+  if ((m = t.match(/\b(domingo|segunda|terca|quarta|quinta|sexta|sabado)\b/))){
+    const alvo = DIAS_SEM[m[1]]; const x = new Date(hj); let soma = (alvo - x.getDay() + 7) % 7;
+    if (soma === 0 && /\b(proxim|que vem)/.test(t)) soma = 7; x.setDate(x.getDate() + soma);
+    return { data: iso(x), resto: t.replace(m[0], ' ') };
+  }
+  if ((m = t.match(/\bdia\s+(\d{1,2})\b(?!\s*(?:h\b|:|horas))/))){
+    const d = +m[1]; let x = valida(hj.getFullYear(), hj.getMonth()+1, d);
+    if (!x || x < hj){ const p = new Date(hj.getFullYear(), hj.getMonth()+1, 1); x = valida(p.getFullYear(), p.getMonth()+1, d); }
+    if (x) return { data: iso(x), resto: t.replace(m[0], ' ') };
+  }
+  return { data: null, resto: t };
+}
+// Encontra o horário: 14h, 14:30, 14h30, "as 9", "9 da manha", "3 da tarde"
+function acharHora(t){
+  let m, h = null, mi = 0;
+  if ((m = t.match(/\b(\d{1,2})\s*(?::|h)\s*(\d{2})\b/))){ h = +m[1]; mi = +m[2]; }
+  else if ((m = t.match(/\b(\d{1,2})\s*(?:h|hs|horas?)\b/))){ h = +m[1]; }
+  else if ((m = t.match(/\b(?:as|a partir das|pelas|umas)\s+(\d{1,2})\b/))){ h = +m[1]; }
+  else if ((m = t.match(/\b(\d{1,2})\s+da\s+(?:manha|tarde|noite)\b/))){ h = +m[1]; }
+  else if ((m = t.match(/^\s*(\d{1,2})\s*$/))){ h = +m[1]; }
+  if (h === null) return null;
+  if (/da tarde|da noite|\bpm\b/.test(t) && h < 12) h += 12;
+  if (h > 23 || mi > 59) return null;
+  return `${pad(h)}:${pad(mi)}`;
+}
+
+let conversa = null;   // estado do agendamento em andamento
+function falar(texto, sugestoes){
+  const c = $('chat'); const d = document.createElement('div'); d.className = 'msg bot'; d.innerHTML = texto; c.appendChild(d);
+  if (sugestoes && sugestoes.length){
+    const s = document.createElement('div'); s.className = 'sugs';
+    sugestoes.forEach(x => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = x.t;
+      b.onclick = () => { s.remove(); if (x.f) x.f(); else { mostrarEu(x.t); responder(x.v || x.t); } }; s.appendChild(b); });
+    c.appendChild(s);
+  }
+  rolarChat();
+}
+function mostrarEu(t){ const d = document.createElement('div'); d.className = 'msg eu'; d.textContent = t; $('chat').appendChild(d); rolarChat(); }
+function rolarChat(){ setTimeout(() => { const m = document.querySelector('main'); m.scrollTop = m.scrollHeight; }, 30); }
+function enviar(){ const i = $('chatIn'), t = i.value.trim(); if (!t) return; i.value = ''; mostrarEu(t); setTimeout(() => responder(t), 250); }
+$('chatIn').addEventListener('keydown', e => { if (e.key === 'Enter') enviar(); });
+
+function boasVindas(){
+  falar('Oi! 💄 Sou sua assistente de agenda.\nMe pergunte, por exemplo:\n• <b>tenho horário dia 12/12?</b>\n• <b>agendar Ana dia 20/11 às 14h</b>\n• <b>quem eu atendo amanhã?</b>\n• <b>minha semana</b>',
+    [{t:'Quem eu atendo hoje?'},{t:'Minha semana'},{t:'Agendar'}]);
+}
+function resumoDia(data){
+  const l = doDia(data), dias = brLongo(data), passado = deIso(data) < hoje();
+  let t = `📅 <b>${dias}</b> (${br(data)})\n`;
+  if (l.length) t += l.map(a => `• <b>${a.hora}</b> ${esc(a.nome)} — 📍 ${esc(a.local)}`).join('\n') + '\n';
+  else t += 'Nenhum atendimento marcado.\n';
+  if (!passado){ const lv = txtLivres(data); t += lv ? `\n✅ <b>Livre:</b> ${lv}` : '\n❌ Dia todo ocupado.'; }
+  return t;
+}
+
+function responder(bruto){
+  const t = semAcento(bruto);
+
+  // ---- se está no meio de um agendamento, continua ----
+  if (conversa){
+    if (/^(cancela|cancelar|deixa|esquece|parar|sair)\b/.test(t)){ conversa = null; return falar('Tudo bem, cancelei esse agendamento. 👍'); }
+    return passoAgendar(bruto, t);
+  }
+
+  const { data, resto } = acharData(t);
+  const hora = acharHora(resto);
+
+  // ---- agendar ----
+  if (/\b(agend|marc|reserv|encaix|coloc)/.test(t)){
+    conversa = { data, hora };
+    // tenta pegar o nome: "agendar Ana dia..." / "marcar a Julia"
+    let m = bruto.match(/(?:agendar|agenda|marcar|marca|reservar|encaixar|colocar)\s+(?:a\s+|o\s+|para\s+a?\s*|pra\s+a?\s*)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ú]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ú]+)?)/);
+    if (m && !/^(Dia|Hoje|Amanh|Segunda|Ter|Quarta|Quinta|Sexta|S[aá]bado|Domingo)/i.test(m[1])) conversa.nome = m[1];
+    return passoAgendar(null, '');
+  }
+
+  // ---- cancelar/desmarcar ----
+  if (/\b(cancel|desmarc|exclu|apag|remov)/.test(t)){
+    const alvo = data ? doDia(data) : BD.ag.filter(a => deIso(a.data) >= hoje()).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora)).slice(0,6);
+    if (!alvo.length) return falar(data ? `Não tem nada marcado em ${br(data)}.` : 'Você não tem atendimentos futuros.');
+    return falar('Qual atendimento você quer cancelar?', alvo.map(a => ({ t:`${br(a.data).slice(0,5)} ${a.hora} ${a.nome}`, f:() => {
+      mostrarEu(`Cancelar ${a.nome}`);
+      falar(`Tem certeza que quer cancelar <b>${esc(a.nome)}</b> em ${br(a.data)} às ${a.hora}?`, [
+        { t:'Sim, cancelar', f:() => { mostrarEu('Sim'); BD.ag = BD.ag.filter(x => x.id !== a.id); gravar(); atualizarTudo(); falar('Pronto, cancelado. 🗑️\nLembre de apagar também o evento do Calendário do iPhone, se tiver adicionado.'); } },
+        { t:'Não', f:() => { mostrarEu('Não'); falar('Ok, mantive o atendimento.'); } } ]); } })));
+  }
+
+  // ---- semana / próximos ----
+  if (/\b(semana|proxim(os|as) dias|proximos atendimentos|proximas clientes)\b/.test(t)){
+    let txt = '🗓️ <b>Próximos 7 dias</b>\n';
+    for (let i = 0; i < 7; i++){ const d = new Date(hoje()); d.setDate(d.getDate()+i); const s = iso(d), l = doDia(s);
+      txt += `\n<b>${SEMANA[d.getDay()]} ${br(s).slice(0,5)}</b>: ` + (l.length ? l.map(a => `${a.hora} ${esc(a.nome)}`).join(', ') : '<span style="color:#4f8a6b">livre</span>'); }
+    return falar(txt);
+  }
+
+  // ---- procurar cliente: "quando é a Ana?" ----
+  let mq = bruto.match(/(?:quando|que dia)\s+(?:e|é|vai ser|ficou)?\s*(?:a|o)?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ú]+)/i);
+  if (mq && !data){
+    const n = semAcento(mq[1]); const ach = BD.ag.filter(a => semAcento(a.nome).includes(n)).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora));
+    if (ach.length) return falar(ach.map(a => `• <b>${esc(a.nome)}</b>: ${brLongo(a.data)} (${br(a.data)}) às ${a.hora} — 📍 ${esc(a.local)}`).join('\n'));
+    return falar(`Não achei nenhuma cliente com o nome "${esc(mq[1])}".`);
+  }
+
+  // ---- disponibilidade / quem atendo ----
+  if (data){
+    if (deIso(data) < hoje()) return falar(resumoDia(data));
+    if (hora){
+      const c = conflito(data, hora, BD.cfg.dur);
+      if (c) return falar(`❌ Às <b>${fmtHoraBr(hora)}</b> do dia ${br(data)} você já tem <b>${esc(c.nome)}</b> (${c.hora}).\n\n${resumoDia(data)}`,
+        [{ t:'Agendar em outro horário', f:() => { mostrarEu('Agendar em outro horário'); conversa = { data }; passoAgendar(null,''); } }]);
+      return falar(`✅ Sim! Dia <b>${br(data)}</b> às <b>${fmtHoraBr(hora)}</b> está livre.`,
+        [{ t:`Agendar ${br(data).slice(0,5)} às ${fmtHoraBr(hora)}`, f:() => { mostrarEu('Agendar'); conversa = { data, hora }; passoAgendar(null,''); } }]);
+    }
+    const temVaga = livres(data).some(([a,b]) => b - a >= BD.cfg.dur);
+    return falar(resumoDia(data), temVaga ? [{ t:'Agendar nesse dia', f:() => { mostrarEu('Agendar nesse dia'); conversa = { data }; passoAgendar(null,''); } }] : []);
+  }
+
+  if (/\b(oi|ola|bom dia|boa tarde|boa noite|ajuda)\b/.test(t)) return boasVindas();
+  if (/\b(obrigad|valeu|brigad)/.test(t)) return falar('De nada! 💖');
+
+  falar('Não entendi muito bem 😅 Tente com a data, por exemplo:\n• <b>tenho horário dia 12/12?</b>\n• <b>agendar Maria sábado às 9h</b>\n• <b>quem eu atendo amanhã?</b>',
+    [{t:'Minha semana'},{t:'Agendar'}]);
+}
+
+// Agendamento passo a passo
+function passoAgendar(bruto, t){
+  const c = conversa;
+  // guarda a resposta do passo anterior
+  if (bruto !== null && c.esperando){
+    const e = c.esperando; c.esperando = null;
+    if (e === 'data'){ const r = acharData(t); if (!r.data){ falar('Não entendi a data. Pode mandar assim: <b>12/12</b> ou <b>sábado</b>'); c.esperando = 'data'; return; }
+      if (deIso(r.data) < hoje()){ falar('Essa data já passou 😅 Qual outra data?'); c.esperando = 'data'; return; }
+      c.data = r.data; const h = acharHora(r.resto); if (h) c.hora = h; }
+    else if (e === 'hora'){ const h = acharHora(t); if (!h){ falar('Não entendi o horário. Mande assim: <b>14h</b> ou <b>9:30</b>'); c.esperando = 'hora'; return; } c.hora = h; }
+    else if (e === 'nome'){ c.nome = bruto.replace(/^(e |é |eh |nome |o nome e |o nome é )/i,'').trim(); }
+    else if (e === 'local'){ c.local = bruto.trim(); }
+    else if (e === 'serv'){ c.serv = /^(pular|nao|não|-)$/i.test(bruto.trim()) ? '' : bruto.trim(); }
+    else if (e === 'tel'){ c.tel = /^(pular|nao|não|-)$/i.test(bruto.trim()) ? '' : bruto.trim(); }
+    else if (e === 'ok'){
+      if (/^(sim|s|ok|pode|confirm|isso|beleza|certo)/.test(t)) return concluirAgendamento();
+      conversa = null; return falar('Ok, não salvei. Se quiser, comece de novo com <b>agendar</b>.');
+    }
+  }
+  // decide a próxima pergunta
+  if (!c.data){ c.esperando = 'data'; return falar('Para qual <b>data</b>?', [{t:'Amanhã', v:'amanha'},{t:'Sábado'}]); }
+  if (deIso(c.data) < hoje()){ c.data = null; c.esperando = 'data'; return falar('Essa data já passou. Para qual <b>data</b>?'); }
+  if (!c.hora){
+    const lv = livres(c.data).filter(([a,b]) => b - a >= BD.cfg.dur);
+    if (!lv.length){ c.esperando = 'data'; c.data = null; return falar('❌ Esse dia já está cheio. Escolha <b>outra data</b>:'); }
+    const opc = []; lv.forEach(([a,b]) => { for (let x = a; x + BD.cfg.dur <= b && opc.length < 6; x += 60) opc.push(hhmm(x)); });
+    c.esperando = 'hora';
+    return falar(`Dia <b>${br(c.data)}</b> está livre em: ${txtLivres(c.data)}\nQual <b>horário</b>?`, opc.map(h => ({ t: fmtHoraBr(h), v: h })));
+  }
+  const choque = conflito(c.data, c.hora, BD.cfg.dur);
+  if (choque){ c.hora = null; c.esperando = 'hora'; return falar(`❌ Esse horário bate com <b>${esc(choque.nome)}</b> (${choque.hora}).\nLivre: ${txtLivres(c.data) || 'nada'}\nQual outro <b>horário</b>?`); }
+  if (!c.nome){ c.esperando = 'nome'; return falar('Qual o <b>nome da cliente</b>?'); }
+  if (!c.local){ c.esperando = 'local'; const locais = [...new Set(BD.ag.map(a => a.local).filter(Boolean))].slice(-3);
+    return falar('<b>Onde</b> vai ser o atendimento?', locais.map(l => ({ t:l }))); }
+  if (c.serv === undefined){ c.esperando = 'serv'; return falar('Qual o <b>serviço</b>?', [{t:'Maquiagem social'},{t:'Maquiagem de noiva'},{t:'Pular'}]); }
+  if (c.tel === undefined){ c.esperando = 'tel'; return falar('<b>WhatsApp</b> da cliente? (ou "pular")', [{t:'Pular'}]); }
+  c.esperando = 'ok';
+  falar(`Confere?\n\n👤 <b>${esc(c.nome)}</b>\n📅 ${brLongo(c.data)} (${br(c.data)})\n⏰ ${c.hora} até ${hhmm(min(c.hora) + BD.cfg.dur)}\n📍 ${esc(c.local)}${c.serv ? `\n💄 ${esc(c.serv)}` : ''}${c.tel ? `\n📱 ${esc(c.tel)}` : ''}`,
+    [{t:'Sim, agendar ✅', v:'sim'},{t:'Não', v:'nao'}]);
+}
+function concluirAgendamento(){
+  const c = conversa; conversa = null;
+  const a = { id:'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), nome:c.nome, data:c.data, hora:c.hora,
+    dur:Number(BD.cfg.dur), local:c.local, serv:c.serv || '', tel:c.tel || '', valor:'', obs:'' };
+  BD.ag.push(a); gravar(); diaSel = a.data;
+  falar(`Agendado! ✨ ${esc(a.nome)} em ${br(a.data)} às ${a.hora}.\nQuer colocar os <b>lembretes</b> no iPhone (1 dia antes e no dia)?`,
+    [{ t:'🔔 Sim, colocar lembretes', f:() => addCalendario(a.id) }, { t:'Ver na agenda', f:() => { trocar('agenda'); selecionar(a.data); } }]);
+}
+
+/* ================== INÍCIO ================== */
+atualizarTudo();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+// atualiza avisos quando ela volta para o app
+document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarTudo(); });
+</script>
+</body>
+</html>
